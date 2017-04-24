@@ -16,7 +16,9 @@ const
   crypto = require('crypto'),
   express = require('express'),
   https = require('https'),
-  request = require('request');
+  request = require('request'),
+  watson = require('watson-developer-cloud'),
+  fs = require('fs');
 
 var app = express();
 app.set('port', process.env.PORT || 5000);
@@ -24,11 +26,17 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.json({ verify: verifyRequestSignature }));
 app.use(express.static('public'));
 
+
 /*
  * Be sure to setup your config values before running this code. You can
  * set them using environment variables or modifying the config file in /config.
  *
  */
+
+// API Key for Watson Visual Recognition
+const API_KEY = (process.env.API_KEY) ?
+  process.env.API_KEY :
+  config.get('APIkey');
 
 // App Secret can be retrieved from the App Dashboard
 const APP_SECRET = (process.env.MESSENGER_APP_SECRET) ?
@@ -55,6 +63,26 @@ if (!(APP_SECRET && VALIDATION_TOKEN && PAGE_ACCESS_TOKEN && SERVER_URL)) {
   console.error("Missing config values");
   process.exit(1);
 }
+
+/*
+var visual_recognition = watson.visual_recognition({
+  api_key: API_KEY,
+  version: 'v3',
+  version_date: '2016-05-20',
+  parameters: {
+
+  }
+});
+
+/*
+Bot.init(
+  PAGE_ACCESS_TOKEN,
+  VALIDATION_TOKEN,
+  typeof process.env.USE_LOCAL_CHAT !== 'undefined' ? process.env.USE_LOCAL_CHAT : true
+);
+*/
+
+//app.use('/webhook', Bot.router());
 
 /*
  * Use your own validation token. Check that the token used in the Webhook
@@ -311,7 +339,30 @@ function receivedMessage(event) {
         sendTextMessage(senderID, messageText);
     }
   } else if (messageAttachments) {
-    sendTextMessage(senderID, "Message with attachment received");
+
+    var image_url = encodeURIComponent(message.attachments[0].payload.url);
+    var url = 'https://gateway-a.watsonplatform.net/visual-recognition/api/v3/classify?api_key='+API_KEY+'&url='+image_url+'&version=2016-05-19&classifier_ids=Heineken_352785902'
+    console.log(url);
+    request(url, function (error, response, body) {
+      //console.log('error:', error); // Print the error if one occurred
+      //console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
+      //console.log('body:' + body.images); // Print the HTML for the Google homepage.
+      body = JSON.parse(body);
+
+      if (body.images[0].classifiers.length > 0) {
+        if (body.images[0].classifiers[0].classes[0].class === "Heinekencan") {
+          sendGenericMessage(senderID);
+        }
+        else if (body.images[0].classifiers[0].classes[0].class === "Heinekenbottle") {
+          sendTextMessage(senderID, "It's a Heineken bottle!");
+        }
+      }
+      else {
+        sendTextMessage(senderID, "It's not a Heineken!");
+      }
+
+    });
+
   }
 }
 
@@ -583,13 +634,13 @@ function sendGenericMessage(recipientId) {
         payload: {
           template_type: "generic",
           elements: [{
-            title: "rift",
-            subtitle: "Next-generation virtual reality",
-            item_url: "https://www.oculus.com/en-us/rift/",
-            image_url: SERVER_URL + "/assets/rift.png",
+            title: "Heineken",
+            subtitle: "The best beer in the world",
+            item_url: "https://www.heineken.com/",
+            image_url: SERVER_URL + "/assets/input.jpg",
             buttons: [{
               type: "web_url",
-              url: "https://www.oculus.com/en-us/rift/",
+              url: "https://www.heineken.com/",
               title: "Open Web URL"
             }, {
               type: "postback",
