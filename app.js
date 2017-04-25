@@ -18,6 +18,7 @@ const
   https = require('https'),
   request = require('request'),
   watson = require('watson-developer-cloud'),
+  chalk = require('chalk'),
   fs = require('fs');
 
 var app = express();
@@ -340,16 +341,17 @@ function receivedMessage(event) {
     }
   } else if (messageAttachments) {
 
+    var info = chalk.green;
     var image_url = encodeURIComponent(message.attachments[0].payload.url);
-    var url = 'https://gateway-a.watsonplatform.net/visual-recognition/api/v3/classify?api_key='+API_KEY+'&url='+image_url+'&version=2016-05-19&classifier_ids=Heineken_352785902'
-    console.log(url);
+    var url = 'https://gateway-a.watsonplatform.net/visual-recognition/api/v3/classify?api_key='+API_KEY+'&url='+image_url+'&version=2016-05-19&classifier_ids=Heineken_352785902,default'
+    console.log(info("Calling url: ") + url);
     request(url, function (error, response, body) {
       //console.log('error:', error); // Print the error if one occurred
       //console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
       //console.log('body:' + body.images); // Print the HTML for the Google homepage.
       body = JSON.parse(body);
 
-      if (body.images[0].classifiers.length > 0) {
+      if (body.images[0].classifiers[0].name === "Heineken") {
         if (body.images[0].classifiers[0].classes[0].class === "Heinekencan") {
           sendGenericMessage(senderID);
         }
