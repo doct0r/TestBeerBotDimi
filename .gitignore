@@ -2,5 +2,6 @@ logs
 *.log
 pids
 node_modules
+config
 .npm
 *.dat
