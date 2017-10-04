@@ -65,6 +65,13 @@ if (!(APP_SECRET && VALIDATION_TOKEN && PAGE_ACCESS_TOKEN && SERVER_URL)) {
   process.exit(1);
 }
 
+var conversation = watson.conversation({
+  username: '3573832b-6ee7-4ccd-8fb9-6211056b9ac2',
+  password: '1N8vIavAn8YU',
+  version: 'v1',
+  version_date: '2017-04-21'
+});
+
 /*
 var visual_recognition = watson.visual_recognition({
   api_key: API_KEY,
@@ -336,31 +343,91 @@ function receivedMessage(event) {
         sendAccountLinking(senderID);
         break;
 
+      case '🍺':
+        sendTextMessage(senderID, "You like beer!");
+        break;
+
       default:
-        sendTextMessage(senderID, messageText);
+
+      // Start conversation with empty message.
+      conversation.message({workspace_id: 'ae3e3f3d-e0ad-46c1-9ede-b3400368141c'}, processResponse);
+
+      // Process the conversation response.
+      function processResponse(err, response) {
+        if (err) {
+          console.error(err); // something went wrong
+          return;
+        }
+
+        // If an intent was detected, log it out to the console.
+        if (response.intents.length > 0) {
+          console.log('Detected intent: #' + response.intents[0].intent);
+        }
+
+        // Display the output from dialog, if any.
+        if (response.output.text.length != 0) {
+            console.log(response.output.text[0]);
+            sendTextMessage(senderID, response.output.text[0]);
+            // Prompt for the next round of input.
+            // Send back the context to maintain state.
+            conversation.message({
+              workspace_id: 'ae3e3f3d-e0ad-46c1-9ede-b3400368141c',
+              input: { text: messageText },
+              context : response.context,
+            }, processResponse)
+        }
+      }
+
+      /*
+      conversation.message({
+        workspace_id: 'ae3e3f3d-e0ad-46c1-9ede-b3400368141c',
+        input: {text: messageText},
+        context: {}
+      },  function(err, response) {
+        if (err)
+          console.log('error:', err);
+        else
+          console.log(JSON.stringify(response.output.text[0], null, 2));
+          console.log(JSON.stringify(response.context.conversation_id, null, 2));
+          sendTextMessage(senderID, response.output.text[0]);
+      });
+      */
+        //sendTextMessage(senderID, messageText);
     }
   } else if (messageAttachments) {
 
     var info = chalk.green;
     var image_url = encodeURIComponent(message.attachments[0].payload.url);
-    var url = 'https://gateway-a.watsonplatform.net/visual-recognition/api/v3/classify?api_key='+API_KEY+'&url='+image_url+'&version=2016-05-19&classifier_ids=Heineken_352785902,default'
+    var url = 'https://gateway-a.watsonplatform.net/visual-recognition/api/v3/classify?api_key='+API_KEY+'&url='+image_url+'&version=2016-05-19&classifier_ids=Beers_723811947,default&threshold=0.50'
     console.log(info("Calling url: ") + url);
     request(url, function (error, response, body) {
       //console.log('error:', error); // Print the error if one occurred
       //console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
       //console.log('body:' + body.images); // Print the HTML for the Google homepage.
+      console.log(body);
       body = JSON.parse(body);
-
-      if (body.images[0].classifiers[0].name === "Heineken") {
-        if (body.images[0].classifiers[0].classes[0].class === "Heinekencan") {
+      console.log(body.images[0].classifiers[0].classes[0].class);
+      if (body.images[0].classifiers[0].name === "Beers") {
+        var brand = body.images[0].classifiers[0].classes[0].class;
+        //if (body.images[0].classifiers[0].classes[0].class === "Beach") {
+        if (brand === "HNK") {
           sendGenericMessage(senderID);
         }
-        else if (body.images[0].classifiers[0].classes[0].class === "Heinekenbottle") {
-          sendTextMessage(senderID, "It's a Heineken bottle!");
+        else if (brand === "Tiger") {
+          sendTextMessage(senderID, "It's a Tiger!");
+        }
+        else if (brand === "Verde") {
+          sendTextMessage(senderID, "It's a Desperados Verde!");
+        }
+        else if (brand === "Mojito") {
+          sendTextMessage(senderID, "It's a Desperados Mojito!");
+        }
+        else if (brand === "Lagunitas") {
+          sendTextMessage(senderID, "It's a Lagunitas!");
         }
       }
       else {
-        sendTextMessage(senderID, "It's not a Heineken!");
+        sendTextMessage(senderID, "I don't know this beer");
       }
 
     });
